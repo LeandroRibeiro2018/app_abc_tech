@@ -3,21 +3,20 @@ import 'package:get/get.dart';
 
 import '../model/assist.dart';
 
-class AssistanceController extends GetxController 
-with StateMixin<List<Assist>>{
-
+class AssistanceController extends GetxController
+    with StateMixin<List<Assist>> {
   late AssistanceService _assistanceService;
 
-  void onInit(){
+  void onInit() {
     super.onInit();
     _assistanceService = Get.find<AssistanceService>();
   }
 
-  void getAssistanceList(){
+  void getAssistanceList() {
+    change(null, status: RxStatus.loading());
     _assistanceService
-    .getAssists()
-    .then((value) => change (value, status: RxStatus.success()))
-    .onError((error, stackTrace) => change([], status: RxStatus.error()));
+        .getAssists()
+        .then((value) => change(value, status: RxStatus.success()))
+        .onError((error, stackTrace) => change([], status: RxStatus.error()));
   }
-
 }
