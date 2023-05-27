@@ -9,13 +9,13 @@ import 'dart:developer';
 
 enum OrderState { creating, started, finish }
 
-class OrderController extends GetxController {
+class OrderController extends GetxController with StateMixin<bool> {
   final GeolocationServiceInterface _geolocationService;
   final OrderServiceInterface _orderSevice;
   final formKey = GlobalKey<FormState>();
   final operatorIdController = TextEditingController();
   final selectedAssists = <Assist>[].obs;
-  late Order _order;
+  late Order? _order;
   final screenState = OrderState.creating.obs;
 
   OrderController(this._geolocationService, this._orderSevice);
@@ -24,6 +24,11 @@ class OrderController extends GetxController {
   void onInit() {
     super.onInit();
     _geolocationService.start();
+  }
+
+  @override
+  void onReady() {
+    change(true, status: RxStatus.success());
   }
 
   getLocation() {
@@ -39,6 +44,7 @@ class OrderController extends GetxController {
   finishStarOrder() {
     switch (screenState.value) {
       case OrderState.creating:
+        change(true, status: RxStatus.loading());
         _geolocationService.getPosition().then((value) {
           var start = OrderLocation(
               latitude: value.latitude,
@@ -50,17 +56,19 @@ class OrderController extends GetxController {
           _order = Order(
               operatorId: int.parse(operatorIdController.text),
               services: assists);
-          _order.start = start;
+          _order!.start = start;
           screenState.value = OrderState.started;
+          change(true, status: RxStatus.success());
         });
         break;
       case OrderState.started:
+        change(true, status: RxStatus.loading());
         _geolocationService.getPosition().then((value) {
           var end = OrderLocation(
               latitude: value.latitude,
               longitude: value.longitude,
               dateTime: DateTime.now());
-          _order.end = end;
+          _order!.end = end;
           screenState.value = OrderState.finish;
           _createOrder();
         });
@@ -71,15 +79,27 @@ class OrderController extends GetxController {
   }
 
   void _createOrder() {
-    _orderSevice.createOrder(_order).then((value) {
+    change(true, status: RxStatus.loading());
+    _orderSevice.createOrder(_order!).then((value) {
       if (value) {
-        Get.snackbar("Sucesso", "Ordem criada com sucesso");
+        Get.snackbar("Sucesso", "Ordem criada com sucesso",
+            backgroundColor: Colors.green);
       } else {
         Get.snackbar("Error", "Problema ao criar ordem",
             backgroundColor: Colors.red);
       }
+      clearForm();
     }).onError((error, stackTrace) {
       ("Error", "Problema ao criar ordem", backgoundColor: Colors.red);
+      clearForm();
     });
+  }
+
+  void clearForm() {
+    operatorIdController.text = "";
+    _order = null;
+    selectedAssists.clear();
+    screenState.value = OrderState.creating;
+    change(true, status: RxStatus.success());
   }
 }
